@@ -108,15 +108,45 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 		res.status(500).json({ message: 'Error en el servidor' });
 	}
 };
-const updateProfile: RequestHandler = async (
-	req: Request,
-	res: Response,
-	next: NextFunction
-): Promise<void> => {
+export const updatePhoto: RequestHandler = async (
+	req: AuthRequest,
+	res,
+	next
+) => {
 	try {
-		// Lógica para actualizar el perfil
-		res.status(200).json({ message: 'Profile updated successfully' });
+		const userId = req.userId;
+		const { image } = req.body;
+
+		if (!userId) {
+			res.status(401).json({ message: 'No autorizado' });
+			return;
+		}
+
+		if (!image) {
+			res.status(400).json({ message: 'No se proporcionó la imagen' });
+			return;
+		}
+
+		const uploadResult = await cloudinary.uploader.upload(image, {
+			folder: 'profile_pics',
+		});
+
+		const updatedUser = await User.findByIdAndUpdate(
+			userId,
+			{ photo: uploadResult.secure_url },
+			{ new: true }
+		);
+
+		if (!updatedUser) {
+			res.status(404).json({ message: 'Usuario no encontrado' });
+			return;
+		}
+
+		res.status(200).json({
+			message: 'Foto de perfil actualizada',
+			photo: updatedUser.photo,
+		});
 	} catch (error) {
-		next(error); // Pasar el error al middleware de manejo de errores
+		next(error);
 	}
 };
