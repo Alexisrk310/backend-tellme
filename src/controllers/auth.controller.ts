@@ -1,21 +1,27 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, RequestHandler, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
-import fs from 'fs';
-import path from 'path';
+import cloudinary from '../utils/cloudinary';
 
-// Extendemos Request para incluir userId
-interface AuthRequest extends Request {
-	userId?: string;
+interface RegisterRequest extends Request {
+	body: {
+		name: string;
+		email: string;
+		password: string;
+		image?: string;
+	};
 }
 
-// Registro de usuario
-// Registro de usuario (sin foto)
-// ✅ OK
-export const register = async (req: Request, res: Response): Promise<void> => {
+export interface AuthRequest extends Request {
+	userId?: string;
+}
+export const register = async (
+	req: RegisterRequest,
+	res: Response
+): Promise<void> => {
 	try {
-		const { name, email, password } = req.body;
+		const { name, email, password, image } = req.body;
 
 		if (!name || !email || !password) {
 			res
@@ -31,10 +37,22 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
+
+		// Si hay una imagen, la subimos a Cloudinary
+		let photoUrl = '';
+		if (image) {
+			const uploadResult = await cloudinary.uploader.upload(image, {
+				folder: 'profile_pics',
+			});
+			photoUrl = uploadResult.secure_url;
+		}
+
+		// Creamos el nuevo usuario
 		const newUser = await User.create({
 			name,
 			email,
 			password: hashedPassword,
+			photo: photoUrl, // Guardamos la URL de la imagen en el campo photo
 		});
 
 		const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET!, {
@@ -43,10 +61,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 		res.status(201).json({
 			id: newUser._id,
+			email: newUser.email,
 			name: newUser.name,
-			photo: newUser.photo
-				? `${req.protocol}://${req.get('host')}/uploads/${newUser.photo}`
-				: '',
+			photo: newUser.photo || '', // Devolvemos la URL de la imagen si existe
 			token,
 		});
 	} catch (error) {
@@ -54,8 +71,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 		res.status(500).json({ message: 'Error en el servidor' });
 	}
 };
-
-// Inicio de sesión
 export const login = async (req: Request, res: Response): Promise<void> => {
 	try {
 		const { email, password } = req.body;
@@ -84,9 +99,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 		res.status(200).json({
 			id: user._id,
 			name: user.name,
-			photo: user.photo
-				? `${req.protocol}://${req.get('host')}/uploads/${user.photo}`
-				: '',
+			email: user.email,
+			photo: user.photo || '', // Devolvemos la URL de la foto si existe
 			token,
 		});
 	} catch (error) {
@@ -94,18 +108,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 		res.status(500).json({ message: 'Error en el servidor' });
 	}
 };
-
-// Actualizar foto de perfil
-export const updatePhoto = async (req: AuthRequest, res: Response) => {
+const updateProfile: RequestHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
 	try {
-		const user = await User.findByIdAndUpdate(
-			req.userId,
-			{ photo: req.file?.filename },
-			{ new: true }
-		);
-		res.json({ message: 'Foto actualizada', user });
+		// Lógica para actualizar el perfil
+		res.status(200).json({ message: 'Profile updated successfully' });
 	} catch (error) {
-		console.error('Error al actualizar la foto:', error);
-		res.status(500).json({ error: 'Error del servidor' });
+		next(error); // Pasar el error al middleware de manejo de errores
 	}
 };
