@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    
     "target": "es2020",               // Especifica el nivel de JavaScript que deseas
     "module": "commonjs",             // Para compatibilidad con Node.js
     "baseUrl": "./src",               // Configura la base URL para resolver módulos
@@ -7,7 +8,7 @@
     "strict": true,                   // Habilita todas las verificaciones estrictas
     "esModuleInterop": true,          // Para compatibilidad con importaciones de módulos
     "skipLibCheck": true,             // Evita comprobaciones de tipos en las bibliotecas
-    "outDir": "./dist",               // Directorio de salida para los archivos compilados
+    "outDir": "dist",              // Directorio de salida para los archivos compilados
     "rootDir": "./src",               // Define el directorio raíz de los archivos fuente
     "forceConsistentCasingInFileNames": true  // Asegura la consistencia de mayúsculas/minúsculas en los nombres de archivo
   },
